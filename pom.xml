@@ -4,12 +4,18 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
+    <parent>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-parent</artifactId>
+        <version>3.2.5</version>
+        <relativePath/> </parent>
+
     <groupId>com.pcdd</groupId>
     <artifactId>so-novel</artifactId>
-    <version>1.8.2</version>
+    <version>1.8.2-api</version>
     <packaging>jar</packaging>
 
-    <name>so-novel</name>
+    <name>so-novel-api</name>
     <url>https://github.com/freeok/so-novel</url>
     <description>交互式网络小说下载器</description>
     <inceptionYear>2021</inceptionYear>
@@ -20,7 +26,6 @@
 
     <properties>
         <java.version>17</java.version>
-        <jline.version>3.27.1</jline.version>
         <javet.version>4.1.3</javet.version>
         <maven.compiler.source>${java.version}</maven.compiler.source>
         <maven.compiler.target>${java.version}</maven.compiler.target>
@@ -29,6 +34,10 @@
     </properties>
 
     <dependencies>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
         <dependency>
             <groupId>org.jsoup</groupId>
             <artifactId>jsoup</artifactId>
@@ -48,6 +57,7 @@
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
             <version>1.18.36</version>
+            <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>io.documentnode</groupId>
@@ -77,18 +87,6 @@
             <version>2.4.1</version>
         </dependency>
         <dependency>
-            <groupId>org.jline</groupId>
-            <artifactId>jline</artifactId>
-            <version>${jline.version}</version>
-        </dependency>
-        <!-- https://github.com/jline/jline3?tab=readme-ov-file#ffm-vs-jni-vs-jansi-vs-jna-vs-exec -->
-        <!-- 不加运行 exe 报错 -->
-        <dependency>
-            <groupId>org.jline</groupId>
-            <artifactId>jline-terminal-jni</artifactId>
-            <version>${jline.version}</version>
-        </dependency>
-        <dependency>
             <groupId>me.tongfei</groupId>
             <artifactId>progressbar</artifactId>
             <version>0.10.1</version>
@@ -98,7 +96,6 @@
             <artifactId>hanlp</artifactId>
             <version>portable-1.8.6</version>
         </dependency>
-        <!-- JS Runtime -->
         <dependency>
             <groupId>com.caoccao.javet</groupId>
             <artifactId>javet</artifactId>
@@ -111,32 +108,15 @@
         </dependency>
     </dependencies>
 
-    <!-- 根据平台打包 V8 -->
     <profiles>
-        <profile>
-            <id>windows-x86_64</id>
-            <activation>
-                <os>
-                    <family>Windows</family>
-                    <arch>x86_64</arch>
-                </os>
-            </activation>
-            <dependencies>
-                <dependency>
-                    <groupId>com.caoccao.javet</groupId>
-                    <artifactId>javet-v8-windows-x86_64</artifactId>
-                    <version>${javet.version}</version>
-                </dependency>
-            </dependencies>
-        </profile>
-
         <profile>
             <id>linux-x86_64</id>
             <activation>
+                <activeByDefault>true</activeByDefault>
                 <os>
                     <family>unix</family>
                     <name>Linux</name>
-                    <arch>x86_64</arch>
+                    <arch>amd64</arch>
                 </os>
             </activation>
             <dependencies>
@@ -147,83 +127,13 @@
                 </dependency>
             </dependencies>
         </profile>
-
-        <profile>
-            <id>macos-x86_64</id>
-            <activation>
-                <os>
-                    <family>mac</family>
-                    <arch>x86_64</arch>
-                </os>
-            </activation>
-            <dependencies>
-                <dependency>
-                    <groupId>com.caoccao.javet</groupId>
-                    <artifactId>javet-v8-macos-x86_64</artifactId>
-                    <version>${javet.version}</version>
-                </dependency>
-            </dependencies>
-        </profile>
-
-        <profile>
-            <id>macos-arm64</id>
-            <activation>
-                <os>
-                    <family>mac</family>
-                    <arch>aarch64</arch>
-                </os>
-            </activation>
-            <dependencies>
-                <dependency>
-                    <groupId>com.caoccao.javet</groupId>
-                    <artifactId>javet-v8-macos-arm64</artifactId>
-                    <version>${javet.version}</version>
-                </dependency>
-            </dependencies>
-        </profile>
     </profiles>
 
     <build>
         <plugins>
-            <!-- IDEA 的终端无法开发 jline 程序，因此在 wt 中运行 -->
             <plugin>
-                <groupId>org.codehaus.mojo</groupId>
-                <artifactId>exec-maven-plugin</artifactId>
-                <version>3.5.0</version>
-                <configuration>
-                    <mainClass>com.pcdd.sonovel.Main</mainClass>
-                </configuration>
-            </plugin>
-
-            <!--
-                maven-jar-plugin 打包生成的 jar，只包含该工程下源码编译结果，不包含依赖内容
-                使用以下插件将所有外部库打包进 jar
-             -->
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-assembly-plugin</artifactId>
-                <version>3.7.1</version>
-                <configuration>
-                    <archive>
-                        <manifest>
-                            <mainClass>com.pcdd.sonovel.Main</mainClass>
-                        </manifest>
-                    </archive>
-                    <descriptorRefs>
-                        <!-- 必须加，固定写法，表示将项目的编译结果和依赖库打包到一个 JAR 文件中 -->
-                        <descriptorRef>jar-with-dependencies</descriptorRef>
-                    </descriptorRefs>
-                    <finalName>app</finalName>
-                </configuration>
-                <executions>
-                    <execution>
-                        <id>make-assembly</id> <!-- this is used for inheritance merges -->
-                        <phase>package</phase> <!-- bind to the packaging phase -->
-                        <goals>
-                            <goal>single</goal>
-                        </goals>
-                    </execution>
-                </executions>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
@@ -233,59 +143,8 @@
                     <propertiesEncoding>UTF-8</propertiesEncoding>
                 </configuration>
             </plugin>
-            <plugin>
-                <!-- https://mvnrepository.com/artifact/com.akathist.maven.plugins.launch4j/launch4j-maven-plugin -->
-                <groupId>com.akathist.maven.plugins.launch4j</groupId>
-                <artifactId>launch4j-maven-plugin</artifactId>
-                <version>2.5.3</version>
-                <executions>
-                    <execution>
-                        <id>launch4j-exe</id>
-                        <phase>package</phase>
-                        <goals>
-                            <goal>launch4j</goal>
-                        </goals>
-                        <!-- https://launch4j.sourceforge.net/docs.html#Configuration_file -->
-                        <configuration>
-                            <!-- 运行方式 gui|console|jniGui32|jniConsole32 -->
-                            <headerType>console</headerType>
-                            <outfile>target/SoNovel/SoNovel.exe</outfile>
-                            <jar>${project.build.directory}/app-jar-with-dependencies.jar</jar>
-                            <icon>assets/logo-1.ico</icon>
-                            <errTitle>SoNovel</errTitle>
-                            <!-- 崩溃时重新启动 -->
-                            <restartOnCrash>true</restartOnCrash>
-                            <classPath>
-                                <mainClass>com.pcdd.sonovel.Main</mainClass>
-                                <addDependencies>true</addDependencies>
-                                <preCp>anything</preCp>
-                            </classPath>
-                            <jre>
-                                <!-- jre 目录，动态配置：-DjrePath=runtime -->
-                                <path>${jrePath}</path>
-                                <minVersion>17</minVersion>
-                            </jre>
-                            <!-- Windows 资源管理器显示的可选版本信息 -->
-                            <versionInfo>
-                                <!-- 中文会乱码，待解决 -->
-                                <fileDescription>Chinese Web Novel Downloader</fileDescription>
-                                <copyright>Copyright (C) 2021-2025 SoNovel. All rights reserved.</copyright>
-                                <!-- 中文会乱码，待解决 -->
-                                <productName>SoNovel</productName>
-                                <companyName>github.com/freeok</companyName>
-                                <internalName>SoNovel</internalName>
-                                <originalFilename>SoNovel.exe</originalFilename>
-                                <trademarks>SoNovel</trademarks>
-                                <language>SIMPLIFIED_CHINESE</language>
-                            </versionInfo>
-                        </configuration>
-                    </execution>
-                </executions>
-            </plugin>
         </plugins>
-
         <resources>
-            <!-- resources 的文件用 @..@ 获取 pom.xml 的 properties -->
             <resource>
                 <directory>src/main/resources</directory>
                 <filtering>true</filtering>

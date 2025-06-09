@@ -26,12 +26,6 @@ import java.io.PrintWriter;
 import java.nio.charset.StandardCharsets;
 import java.util.concurrent.CountDownLatch;
 
-import static org.jline.jansi.AnsiRenderer.render;
-
-/**
- * @author pcdd
- * Created at 2024/3/27
- */
 public class ChapterParser extends Source {
 
     private final ChapterConverter chapterConverter;
@@ -41,7 +35,6 @@ public class ChapterParser extends Source {
         this.chapterConverter = new ChapterConverter(config);
     }
 
-    // 用于测试
     @SneakyThrows
     public Chapter parse(Chapter chapter) {
         Rule.Chapter r = this.rule.getChapter();
@@ -68,7 +61,6 @@ public class ChapterParser extends Source {
             Assert.notEmpty(content, "正文内容为空");
             chapter.setContent(content);
 
-            // 确保简繁互转最后调用
             return ChineseConverter.convert(chapterConverter.convert(chapter), this.rule.getLanguage(), config.getLanguage());
 
         } catch (Exception e) {
@@ -83,20 +75,19 @@ public class ChapterParser extends Source {
         for (int attempt = 1; attempt <= config.getMaxRetryAttempts(); attempt++) {
             try {
                 long interval = CrawlUtils.randomInterval(config, true);
-                Console.log(render("<== 【{}】下载失败，正在重试。重试次数: {}/{} 重试间隔: {} ms 原因: {}", "red"),
+                Console.log("<== 【{}】下载失败，正在重试。重试次数: {}/{} 重试间隔: {} ms 原因: {}",
                         chapter.getTitle(), attempt, config.getMaxRetryAttempts(), interval, errMsg);
 
                 String content = fetchContent(chapter.getUrl(), interval);
                 Assert.notEmpty(content, "正文内容为空");
                 chapter.setContent(content);
 
-                Console.log(render("<== 重试成功: 【{}】", "green"), chapter.getTitle());
+                Console.log("<== 重试成功: 【{}】", chapter.getTitle());
                 return chapterConverter.convert(chapter);
 
             } catch (Exception e) {
-                Console.error(render("<== 第 {} 次重试失败: 【{}】 原因: {}", "red"), attempt, chapter.getTitle(), e.getMessage());
+                Console.error("<== 第 {} 次重试失败: 【{}】 原因: {}", attempt, chapter.getTitle(), e.getMessage());
                 if (attempt == config.getMaxRetryAttempts()) {
-                    // 最终失败时记录日志
                     saveDownloadErrorLog(chapter, e.getMessage());
                 }
             }
@@ -113,18 +104,11 @@ public class ChapterParser extends Source {
 
         try (PrintWriter pw = new PrintWriter(new FileWriter(path, StandardCharsets.UTF_8, true))) {
             pw.println(line);
-
         } catch (IOException e) {
             Console.error(e);
         }
     }
 
-    /**
-     * 爬取正文内容
-     *
-     * @param url      章节 url
-     * @param interval 爬取间隔（毫秒）
-     */
     @SneakyThrows
     public String fetchContent(String url, long interval) {
         Rule.Chapter r = rule.getChapter();
@@ -139,12 +123,9 @@ public class ChapterParser extends Source {
 
         try (Response resp = CrawlUtils.request(client, url, r.getTimeout())) {
             Document doc = Jsoup.parse(resp.body().string(), r.getBaseUri());
-
             Elements contentEls = JsoupUtils.select(doc, r.getContent());
             JsoupUtils.clearAllAttributes(contentEls);
-
             Thread.sleep(interval);
-
             return JsoupUtils.invokeJs(r.getContent(), contentEls.html());
         }
     }
@@ -162,12 +143,10 @@ public class ChapterParser extends Source {
             }
 
             String content = JsoupUtils.selectAndInvokeJs(doc, r.getContent(), ContentType.HTML);
-            // String ==> Elements
             Elements contentEls = Jsoup.parse(content).children();
             JsoupUtils.clearAllAttributes(contentEls);
             contentBuilder.append(contentEls.html());
 
-            // 获取下一页按钮元素
             Elements nextEls = JsoupUtils.select(doc, r.getNextPage());
             String candidateNext = resolveNextUrl(doc, nextEls, r);
             if (isLastPage(candidateNext, nextEls, r)) {
@@ -182,30 +161,20 @@ public class ChapterParser extends Source {
     }
 
     private String resolveNextUrl(Document doc, Elements nextEls, Rule.Chapter r) {
-        // 从 JS 获取下一页链接
         if (r.getNextPageInJs() != null) {
             return JsoupUtils.selectAndInvokeJs(doc, r.getNextPageInJs(), ContentType.HTML);
         }
-        // FIXME nextEls NPE https://github.com/freeok/so-novel/issues/148#issuecomment-2826226097
         if (nextEls.isEmpty()) {
             Console.error("分页章节正文获取为空，可能被限流！\n出错链接：{}\n链接内容：{}", doc.baseUri(), doc.body().text());
             return null;
         }
-        // 从按钮获取下一页链接
         return nextEls.first().absUrl("href");
     }
 
     private boolean isLastPage(String nextUrl, Elements nextEls, Rule.Chapter r) {
-        if (nextUrl == null) {
-            return true;
-        }
-
-        // 正则判断是否为章节最后一页
+        if (nextUrl == null) return true;
         boolean endByChapterRule = r.getNextChapterLink() != null && nextUrl.matches(r.getNextChapterLink());
-        // 通用规则，大多数分页的 url 以 "_个位数字.html" 结尾。&& 部分网站会用“下一章”代替“下一页”
         boolean genericEnd = !nextUrl.matches(".*[-_]\\d\\.html") && nextEls.text().matches(".*(下一章|没有了|>>|书末页).*");
-
         return endByChapterRule || genericEnd;
     }
-
 }

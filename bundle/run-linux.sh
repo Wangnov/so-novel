@@ -1,1 +1,0 @@
-chmod 777 ./runtime/bin/java && ./runtime/bin/java -Dconfig.file=config.ini -Denv=prod -jar app.jar

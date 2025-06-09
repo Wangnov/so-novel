@@ -24,20 +24,10 @@ import java.util.Map;
 import java.util.function.Supplier;
 import java.util.stream.Stream;
 
-import static org.jline.jansi.AnsiRenderer.render;
-
-/**
- * @author pcdd
- * Created at 2025/2/6
- */
 @UtilityClass
 public class CoverUpdater {
 
-    /**
-     * 依次尝试不同来源获取封面
-     */
     public String fetchCover(Book book, String coverUrl) {
-        // 无封面，使用默认封面
         book.setCoverUrl(StrUtil.isEmpty(coverUrl) ? "https://bookcover.yuewen.com/qdbimg/no-cover" : coverUrl);
         if (StrUtil.isEmpty(book.getBookName())) {
             return book.getCoverUrl();
@@ -52,9 +42,6 @@ public class CoverUpdater {
                 .orElse(book.getCoverUrl());
     }
 
-    /**
-     * 起点中文网
-     */
     public String fetchQidian(Book book) {
         Map<String, String> headers = new LinkedHashMap<>();
         headers.put(Header.USER_AGENT.getValue(), RandomUA.generate());
@@ -69,9 +56,7 @@ public class CoverUpdater {
 
             for (Element e : document.select(".res-book-item")) {
                 String qdName = e.select(".book-mid-info > .book-info-title > a").text();
-                // 起点作家
                 String qdAuthor1 = e.select(".book-mid-info > .author > .name").text();
-                // 非起点作家
                 String qdAuthor2 = e.select(".book-mid-info > .author > i").text();
                 String qdAuthor = StrUtil.isEmpty(qdAuthor1) ? qdAuthor2 : qdAuthor1;
 
@@ -81,18 +66,14 @@ public class CoverUpdater {
                 }
             }
         } catch (Exception e) {
-            Console.error(render("获取起点封面失败：{}", e.getMessage(), "red"));
+            Console.error("获取起点封面失败：{}", e.getMessage());
         }
         return null;
     }
 
-    /**
-     * 纵横中文网
-     */
     public String fetchZongheng(Book book) {
         try {
             String url = "https://search.zongheng.com/search/book";
-            // 自动拼接查询字符串
             Map<String, Object> params = new HashMap<>();
             params.put("keyword", book.getBookName());
             params.put("pageNo", 1);
@@ -108,7 +89,6 @@ public class CoverUpdater {
                     .getJSONObject("data")
                     .getJSONObject("datas");
 
-            // 搜索结果未空
             if (datasField == null) {
                 return null;
             }
@@ -129,9 +109,6 @@ public class CoverUpdater {
         return null;
     }
 
-    /**
-     * 创世中文网
-     */
     public String fetchChuangshi(Book book) {
         return null;
     }
@@ -147,5 +124,4 @@ public class CoverUpdater {
     private boolean isValidCover(String coverUrl) {
         return StrUtil.isNotBlank(coverUrl) && Validator.isUrl(coverUrl);
     }
-
 }
